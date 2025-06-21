@@ -26,8 +26,7 @@ bot.once('spawn', () => {
   data = mcData(bot.version)
   defaultMove = new Movements(bot, data)
   bot.pathfinder.setMovements(defaultMove)
-  
-  bot.chat('/login afk1234')
+
   bot.chat('Hello! AFKbot reporting in.')
 
   setInterval(killNearbyMobs, 2000)
@@ -40,22 +39,28 @@ bot.once('spawn', () => {
   setInterval(detectNearbyPlayers, 3000)
 })
 
-// 🗣️ Chat Commands
-bot.on('chat', (username, message) => {
-  if (username === bot.username || !message.startsWith('@AFKbot')) return
+// ✅ NEW: Listen to chat messages with formatting
+bot.on('message', (jsonMsg) => {
+  const message = jsonMsg.toString()
 
-  const args = message.split(' ')
-  const command = args[1]
+  // Only handle messages like: <SLxBeast> @AFKbot follow DST_bro
+  const match = message.match(/<(.+?)> @AFKbot (.+)/)
+  if (!match) return
+
+  const username = match[1]
+  const commandText = match[2]
+  const args = commandText.split(' ')
+  const command = args[0]
 
   switch (command) {
     case 'goto':
-      if (args.length !== 5) {
+      if (args.length !== 4) {
         bot.chat('Usage: @AFKbot goto <x> <y> <z>')
         return
       }
-      const x = parseFloat(args[2])
-      const y = parseFloat(args[3])
-      const z = parseFloat(args[4])
+      const x = parseFloat(args[1])
+      const y = parseFloat(args[2])
+      const z = parseFloat(args[3])
       if (isNaN(x) || isNaN(y) || isNaN(z)) {
         bot.chat('Invalid coordinates!')
         return
@@ -65,7 +70,7 @@ bot.on('chat', (username, message) => {
       break
 
     case 'follow':
-      const targetName = args[2]
+      const targetName = args[1]
       const target = bot.players[targetName]?.entity
       if (!target) {
         bot.chat(`Can't find player: ${targetName}`)
@@ -90,7 +95,7 @@ bot.on('chat', (username, message) => {
       break
 
     case 'protect':
-      if (args[2] === 'me') {
+      if (args[1] === 'me') {
         if (!whitelist.includes(username)) {
           bot.chat(`Sorry @${username}, you're not authorized for protection.`)
           return
@@ -109,7 +114,7 @@ bot.on('chat', (username, message) => {
       break
 
     case 'ok':
-      if (args[2] === 'now' && args[3] === 'fine' && protectTarget && username === protectTarget.username) {
+      if (args[1] === 'now' && args[2] === 'fine' && protectTarget && username === protectTarget.username) {
         stopProtection()
         bot.chat(`✅ Standing down, @${username}.`)
       }
@@ -217,6 +222,6 @@ function stopProtection() {
   protectionInterval = null
 }
 
-// 🔧 Safety Events
+// 🔧 Error Handling
 bot.on('error', console.log)
 bot.on('end', () => console.log('Bot disconnected'))
