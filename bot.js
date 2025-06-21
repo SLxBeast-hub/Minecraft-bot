@@ -11,115 +11,87 @@ const bot = mineflayer.createBot({
 
 bot.loadPlugin(pathfinder)
 
-let data, defaultMove
+let defaultMove
 
 bot.once('spawn', async () => {
   bot.chat('/login afk1234')
-
-  data = mcData(bot.version)
+  const data = mcData(bot.version)
   defaultMove = new Movements(bot, data)
+
+  defaultMove.canDig = true
+  defaultMove.allow1by1towers = true
+
+  // Allow building blocks
+  defaultMove.scafoldingBlocks = bot.inventory.items().filter(item =>
+    item.name.includes('dirt') || item.name.includes('stone') || item.name.includes('cobblestone')
+  )
+
   bot.pathfinder.setMovements(defaultMove)
 
-  await equipBestGear()
-  bot.chat('Hello! Berserk mode activated!')
+  bot.chat('I’m online and will hunt players no matter where they hide! 😈')
 
-  // Attack loop every 1 second
-  setInterval(() => {
-    attackNearbyEntities()
-  }, 1000)
-
-  // Check hunger and health every 5 seconds (no chat feedback)
-  setInterval(() => {
-    checkHealthAndHunger()
-  }, 5000)
+  setInterval(trackAndAttackPlayers, 3000)
 })
 
-// Equip sword, shield, armor
-async function equipBestGear() {
-  try {
-    const sword = bot.inventory.items().find(i => i.name.includes('sword'))
-    if (sword) await bot.equip(sword, 'hand')
+async function equipGear() {
+  const sword = bot.inventory.items().find(i => i.name.includes('sword'))
+  if (sword) await bot.equip(sword, 'hand').catch(() => {})
 
-    const shield = bot.inventory.items().find(i => i.name.includes('shield'))
-    if (shield) await bot.equip(shield, 'off-hand')
+  const shield = bot.inventory.items().find(i => i.name.includes('shield'))
+  if (shield) await bot.equip(shield, 'off-hand').catch(() => {})
 
-    const armorSlots = ['head', 'torso', 'legs', 'feet']
-    const armorKeywords = ['helmet', 'chestplate', 'leggings', 'boots']
-    for (let i = 0; i < armorSlots.length; i++) {
-      const item = bot.inventory.items().find(it => it.name.includes(armorKeywords[i]))
-      if (item) await bot.equip(item, armorSlots[i])
-    }
-  } catch (err) {
-    console.log('Equip error:', err)
+  const armorSlots = ['head', 'torso', 'legs', 'feet']
+  const armorKeywords = ['helmet', 'chestplate', 'leggings', 'boots']
+  for (let i = 0; i < armorSlots.length; i++) {
+    const item = bot.inventory.items().find(it => it.name.includes(armorKeywords[i]))
+    if (item) await bot.equip(item, armorSlots[i]).catch(() => {})
   }
 }
 
-// Attack any hostile or player within 100 blocks
-function attackNearbyEntities() {
-  const nearbyTargets = Object.values(bot.entities).filter(entity => {
-    if (!entity.position || entity === bot.entity) return false
-    const dist = entity.position.distanceTo(bot.entity.position)
-    if (dist > 100) return false
+async function trackAndAttackPlayers() {
+  await equipGear()
 
-    if (entity.type === 'player' && entity.username !== bot.username) return true
-    if (entity.type === 'mob') return true
+  const target = Object.values(bot.players)
+    .map(p => p.entity)
+    .filter(p => p && p.type === 'player' && p.username !== bot.username)
+    .sort((a, b) => a.position.distanceTo(bot.entity.position) - b.position.distanceTo(bot.entity.position))[0]
 
-    return false
-  })
-
-  if (nearbyTargets.length === 0) {
-    bot.pathfinder.setGoal(null)
-    return
-  }
-
-  nearbyTargets.sort((a, b) =>
-    a.position.distanceTo(bot.entity.position) - b.position.distanceTo(bot.entity.position)
-  )
-  const target = nearbyTargets[0]
+  if (!target) return
 
   bot.pathfinder.setGoal(new goals.GoalFollow(target, 1), true)
-  bot.lookAt(target.position.offset(0, target.height, 0), true)
-  if (!bot.isAttacking) {
+
+  // Attack if close enough
+  if (bot.entity.position.distanceTo(target.position) < 3) {
+    bot.lookAt(target.position.offset(0, target.height, 0), true)
     bot.attack(target)
+  } else {
+    // Break blocks if needed
+    tryBreakBlockInWay(target)
   }
 }
 
-// Check health and hunger, eat golden apple if possible, else normal food (no chat)
-async function checkHealthAndHunger() {
-  if (bot.food === undefined || bot.health === undefined) return
+async function tryBreakBlockInWay(target) {
+  const blockInFront = bot.blockAt(bot.entity.position.offset(0, -1, 0))
+  const targetBelow = bot.blockAt(target.position.offset(0, 0, 0))
 
-  const lowFood = bot.food < 16
-  const lowHealth = bot.health < 12
+  const pickaxe = bot.inventory.items().find(i => i.name.includes('pickaxe'))
+  if (pickaxe) {
+    await bot.equip(pickaxe, 'hand').catch(() => {})
+  }
 
-  if (lowFood || lowHealth) {
-    const goldenApple = bot.inventory.items().find(i => i.name.includes('golden_apple'))
-    if (goldenApple) {
-      try {
-        await bot.equip(goldenApple, 'hand')
-        await bot.consume()
-        return
-      } catch {}
+  if (blockInFront && bot.canDigBlock(blockInFront)) {
+    try {
+      await bot.dig(blockInFront)
+    } catch {}
+  }
 
-    }
-
-    const foodItem = bot.inventory.items().find(i =>
-      ['beef', 'bread', 'apple'].some(f => i.name.includes(f))
-    )
-    if (foodItem) {
-      try {
-        await bot.equip(foodItem, 'hand')
-        await bot.consume()
-      } catch {}
-    }
+  if (targetBelow && bot.canDigBlock(targetBelow)) {
+    try {
+      await bot.dig(targetBelow)
+    } catch {}
   }
 }
 
-// Keep equipping gear every tick
-bot.on('physicTick', () => {
-  equipBestGear().catch(() => {})
-})
-
-// Chat feedback when bot kills a player
 bot.on('entityDead', (entity) => {
   if (entity.type === 'player') {
     bot.chat(`You are so weak, asshole ${entity.username}!`)
