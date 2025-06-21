@@ -22,6 +22,11 @@ const whitelist = ['SLxBeast', 'DST_bro']
 
 bot.once('spawn', () => {
   bot.chat('/login afk1234')
+  
+ bot.on('message', (jsonMsg) => {
+  console.log('Raw message from chat:', jsonMsg.toString())
+})
+
 
   data = mcData(bot.version)
   defaultMove = new Movements(bot, data)
