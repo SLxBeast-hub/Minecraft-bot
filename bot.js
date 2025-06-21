@@ -54,12 +54,12 @@ async function equipBestGear() {
   }
 }
 
-// Attack any hostile or player within 10 blocks
+// Attack any hostile or player within 100 blocks
 function attackNearbyEntities() {
   const nearbyTargets = Object.values(bot.entities).filter(entity => {
     if (!entity.position || entity === bot.entity) return false
     const dist = entity.position.distanceTo(bot.entity.position)
-    if (dist > 10) return false
+    if (dist > 100) return false
 
     if (entity.type === 'player' && entity.username !== bot.username) return true
     if (entity.type === 'mob') return true
@@ -92,19 +92,16 @@ async function checkHealthAndHunger() {
   const lowHealth = bot.health < 12
 
   if (lowFood || lowHealth) {
-    // Try golden apple first
     const goldenApple = bot.inventory.items().find(i => i.name.includes('golden_apple'))
     if (goldenApple) {
       try {
         await bot.equip(goldenApple, 'hand')
         await bot.consume()
         return
-      } catch {
-        // fallback to normal food
-      }
+      } catch {}
+
     }
 
-    // Fallback normal food
     const foodItem = bot.inventory.items().find(i =>
       ['beef', 'bread', 'apple'].some(f => i.name.includes(f))
     )
@@ -112,9 +109,7 @@ async function checkHealthAndHunger() {
       try {
         await bot.equip(foodItem, 'hand')
         await bot.consume()
-      } catch {
-        // ignore errors here
-      }
+      } catch {}
     }
   }
 }
