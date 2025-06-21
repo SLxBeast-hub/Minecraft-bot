@@ -1,0 +1,28 @@
+const mineflayer = require('mineflayer')
+
+const bot = mineflayer.createBot({
+  host: 'your.server.ip',  // Server IP or hostname
+  port: 25565,             // Server port (optional if default 25565)
+  username: 'BotAccount',  // Bot Minecraft account (can be cracked or premium)
+  // password: 'yourPassword', // If it's a premium account, uncomment this line
+  version: false           // False = auto-detect server version
+})
+
+// Log events
+bot.on('login', () => {
+  console.log('Bot logged in!')
+})
+
+bot.on('spawn', () => {
+  console.log('Bot spawned in the world')
+
+  // Walk in a random direction
+  setInterval(() => {
+    const direction = ['forward', 'back', 'left', 'right'][Math.floor(Math.random() * 4)]
+    bot.setControlState(direction, true)
+    setTimeout(() => bot.setControlState(direction, false), 1000)
+  }, 3000)
+})
+
+bot.on('error', (err) => console.log('Error:', err))
+bot.on('end', () => console.log('Bot disconnected'))
