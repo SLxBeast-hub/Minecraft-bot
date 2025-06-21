@@ -17,28 +17,10 @@ let defaultMove
 let protectTarget = null
 let protectionInterval = null
 
-// Whitelist for protect feature
 const whitelist = ['SLxBeast', 'DST_bro']
 
 bot.once('spawn', () => {
   bot.chat('/login afk1234')
-  
-bot.on('message', (jsonMsg) => {
-  const message = jsonMsg.toString()
-  console.log('Raw message from chat:', message) // still helpful for future debugging
-
-  // Match things like: <[Member]SLxBeast> @AFKbot follow
-  const match = message.match(/^<(\[.*\])?(\w+)> @AFKbot (.+)/)
-
-  if (!match) return
-
-  const username = match[2] // SLxBeast
-  const commandText = match[3] // everything after "@AFKbot"
-
-  const args = commandText.split(' ')
-  const command = args[0]
-
-
 
   data = mcData(bot.version)
   defaultMove = new Movements(bot, data)
@@ -56,16 +38,17 @@ bot.on('message', (jsonMsg) => {
   setInterval(detectNearbyPlayers, 3000)
 })
 
-// ✅ NEW: Listen to chat messages with formatting
+// ✅ Listen to chat messages with server formatting
 bot.on('message', (jsonMsg) => {
   const message = jsonMsg.toString()
+  console.log('Raw message from chat:', message)
 
-  // Only handle messages like: <SLxBeast> @AFKbot follow DST_bro
-  const match = message.match(/<(.+?)> @AFKbot (.+)/)
+  // Match messages like: <[Member]SLxBeast> @AFKbot follow Cyber_Vortexx
+  const match = message.match(/^<(\[.*\])?(\w+)> @AFKbot (.+)/)
   if (!match) return
 
-  const username = match[1]
-  const commandText = match[2]
+  const username = match[2] // Extract username like SLxBeast
+  const commandText = match[3] // The rest after @AFKbot
   const args = commandText.split(' ')
   const command = args[0]
 
