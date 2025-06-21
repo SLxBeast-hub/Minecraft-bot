@@ -38,29 +38,22 @@ bot.once('spawn', () => {
   setInterval(detectNearbyPlayers, 3000)
 })
 
-// ✅ Listen to chat messages with server formatting
-bot.on('message', (jsonMsg) => {
-  const message = jsonMsg.toString()
-  console.log('Raw message from chat:', message)
+// ✅ Chat Command Listener (RELIABLE FOR TERMUX/ATERNOS)
+bot.on('chat', (username, message) => {
+  if (username === bot.username || !message.startsWith('@AFKbot')) return
 
-  // Match messages like: <[Member]SLxBeast> @AFKbot follow Cyber_Vortexx
-  const match = message.match(/^<(\[.*\])?(\w+)> @AFKbot (.+)/)
-  if (!match) return
-
-  const username = match[2] // Extract username like SLxBeast
-  const commandText = match[3] // The rest after @AFKbot
-  const args = commandText.split(' ')
-  const command = args[0]
+  const args = message.split(' ')
+  const command = args[1]
 
   switch (command) {
     case 'goto':
-      if (args.length !== 4) {
+      if (args.length !== 5) {
         bot.chat('Usage: @AFKbot goto <x> <y> <z>')
         return
       }
-      const x = parseFloat(args[1])
-      const y = parseFloat(args[2])
-      const z = parseFloat(args[3])
+      const x = parseFloat(args[2])
+      const y = parseFloat(args[3])
+      const z = parseFloat(args[4])
       if (isNaN(x) || isNaN(y) || isNaN(z)) {
         bot.chat('Invalid coordinates!')
         return
@@ -70,7 +63,7 @@ bot.on('message', (jsonMsg) => {
       break
 
     case 'follow':
-      const targetName = args[1]
+      const targetName = args[2]
       const target = bot.players[targetName]?.entity
       if (!target) {
         bot.chat(`Can't find player: ${targetName}`)
@@ -95,7 +88,7 @@ bot.on('message', (jsonMsg) => {
       break
 
     case 'protect':
-      if (args[1] === 'me') {
+      if (args[2] === 'me') {
         if (!whitelist.includes(username)) {
           bot.chat(`Sorry @${username}, you're not authorized for protection.`)
           return
@@ -114,7 +107,7 @@ bot.on('message', (jsonMsg) => {
       break
 
     case 'ok':
-      if (args[1] === 'now' && args[2] === 'fine' && protectTarget && username === protectTarget.username) {
+      if (args[2] === 'now' && args[3] === 'fine' && protectTarget && username === protectTarget.username) {
         stopProtection()
         bot.chat(`✅ Standing down, @${username}.`)
       }
