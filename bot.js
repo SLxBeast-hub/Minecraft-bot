@@ -23,9 +23,21 @@ const whitelist = ['SLxBeast', 'DST_bro']
 bot.once('spawn', () => {
   bot.chat('/login afk1234')
   
- bot.on('message', (jsonMsg) => {
-  console.log('Raw message from chat:', jsonMsg.toString())
-})
+bot.on('message', (jsonMsg) => {
+  const message = jsonMsg.toString()
+  console.log('Raw message from chat:', message) // still helpful for future debugging
+
+  // Match things like: <[Member]SLxBeast> @AFKbot follow
+  const match = message.match(/^<(\[.*\])?(\w+)> @AFKbot (.+)/)
+
+  if (!match) return
+
+  const username = match[2] // SLxBeast
+  const commandText = match[3] // everything after "@AFKbot"
+
+  const args = commandText.split(' ')
+  const command = args[0]
+
 
 
   data = mcData(bot.version)
